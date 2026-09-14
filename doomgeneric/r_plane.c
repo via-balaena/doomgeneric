@@ -42,7 +42,18 @@ planefunction_t		ceilingfunc;
 //
 
 // Here comes the obnoxious "visplane".
+//
+// Overridable, but NOT cut by default, and the measurement is why: swept
+// across all 36 Freedoom maps with the view moving, the high-water mark is 93
+// of these 128, and 29 of those maps need more than 16. Each one is
+// SCREENWIDTH*2 bytes of top/bottom plus a header, so the array is 84,992
+// bytes and cutting it is the single biggest saving available -- which is
+// exactly why it wants a number from a measurement rather than from hope.
+// A build that lowers it runs the maps it was measured against and no others,
+// and announces the rest with "R_DrawPlanes: visplane overflow".
+#ifndef MAXVISPLANES
 #define MAXVISPLANES	128
+#endif
 visplane_t		visplanes[MAXVISPLANES];
 visplane_t*		lastvisplane;
 visplane_t*		floorplane;

@@ -90,7 +90,10 @@ angle_t			clipangle;
 // maps the visible view angles to screen X coordinates,
 // flattening the arc to a flat projection plane.
 // There will be many angles mapped to the same X. 
-int			viewangletox[FINEANGLES/2];
+/* short, not int: R_InitTextureMapping clamps every entry to [-1,
+ * viewwidth+1], so the widest value this can hold is 321 and the array is
+ * 8,192 bytes of RAM smaller for saying so. */
+short			viewangletox[FINEANGLES/2];
 
 // The xtoviewangleangle[] table maps a screen pixel
 // to the lowest viewangle that maps back to x ranges

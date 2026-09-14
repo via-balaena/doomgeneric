@@ -12,6 +12,10 @@
 # No platform object is built. doomgeneric's platform file supplies the six
 # DG_ hooks AND a main(), and on Tock both come from the Rust side -- linking
 # one in would collide with the runtime rather than merely be unused.
+# DOOM_SCAFFOLD passes extra -D flags for a build that exists only to be
+# measured -- e.g. a smaller MAXVISPLANES to get a map booting so the stack
+# and heap watermarks can be read. It is deliberately an environment variable
+# and not a default: scaffolding that persists is just an undocumented cut.
 set -u
 SRC=$(cd "$(dirname "$0")/../doomgeneric" && pwd)
 INC=$(cd "$(dirname "$0")/../tock/include" && pwd)
@@ -35,6 +39,7 @@ FLAGS="--target=thumbv8m.main-none-eabi -mcpu=cortex-m33 -Os -ffreestanding -mfl
        -DCMAP256 -DDOOMGENERIC_RESX=320 -DDOOMGENERIC_RESY=200 \
        -DMAXOPENINGS=6144 -DBACKUPTICS=16 -DMAXVISSPRITES=96 -DMAX_CAPTURES=1 \
        -DDOOM_TABLES_CONST \
+       ${DOOM_SCAFFOLD:-} \
        -Wno-everything -I$INC -I$SRC"
 ok=0; bad=0
 while read -r b; do
