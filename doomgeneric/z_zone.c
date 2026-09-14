@@ -77,16 +77,20 @@ static long dg_tag_peak[PU_NUM_TAGS];
 #define DG_SITES 256
 static void* dg_site[DG_SITES];
 static long  dg_site_bytes[DG_SITES];
+static long  dg_site_calls[DG_SITES];
 static int   dg_nsites = 0;
 
 static void dg_note_site(void* pc, long bytes)
 {
     int i;
     for (i = 0; i < dg_nsites; i++)
-        if (dg_site[i] == pc) { dg_site_bytes[i] += bytes; return; }
+        if (dg_site[i] == pc) {
+            dg_site_bytes[i] += bytes; dg_site_calls[i]++; return;
+        }
     if (dg_nsites < DG_SITES) {
         dg_site[dg_nsites] = pc;
         dg_site_bytes[dg_nsites] = bytes;
+        dg_site_calls[dg_nsites] = 1;
         dg_nsites++;
     }
 }
@@ -126,11 +130,15 @@ void Z_PrintPeak(void)
             for (b = a + 1; b < dg_nsites; b++)
                 if (dg_site_bytes[b] > dg_site_bytes[a]) {
                     long tb = dg_site_bytes[a]; void* tp = dg_site[a];
+                    long tc = dg_site_calls[a];
                     dg_site_bytes[a] = dg_site_bytes[b]; dg_site[a] = dg_site[b];
+                    dg_site_calls[a] = dg_site_calls[b];
                     dg_site_bytes[b] = tb; dg_site[b] = tp;
+                    dg_site_calls[b] = tc;
                 }
         for (a = 0; a < dg_nsites && a < 18; a++)
-            printf("  SITE %p %10ld\n", dg_site[a], dg_site_bytes[a]);
+            printf("  SITE %p %10ld in %6ld call(s)\n",
+                   dg_site[a], dg_site_bytes[a], dg_site_calls[a]);
     }
 }
 
