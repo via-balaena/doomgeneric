@@ -80,6 +80,28 @@ static long  dg_site_bytes[DG_SITES];
 static long  dg_site_calls[DG_SITES];
 static int   dg_nsites = 0;
 
+/* High-water marks for the renderer's FIXED-SIZE arrays.
+ *
+ * These are static arrays, so no zone number can see them -- which is exactly
+ * how 246,870 bytes of .bss went unmeasured. Their sizes are compile-time
+ * limits chosen for a desktop, and the only honest way to shrink them is to
+ * watch how full they actually get.
+ */
+#define DG_PEAKS 4
+static long dg_peak[DG_PEAKS];
+static const char *dg_peak_name[DG_PEAKS] = {
+    "visplanes", "openings", "drawsegs", "vissprites"
+};
+static const char *dg_peak_limit[DG_PEAKS] = {
+    "MAXVISPLANES", "MAXOPENINGS", "MAXDRAWSEGS", "MAXVISSPRITES"
+};
+
+void DG_NotePeak(int which, long value)
+{
+    if (which >= 0 && which < DG_PEAKS && value > dg_peak[which])
+        dg_peak[which] = value;
+}
+
 static void dg_note_site(void* pc, long bytes)
 {
     int i;
@@ -136,6 +158,9 @@ void Z_PrintPeak(void)
                     dg_site_bytes[b] = tb; dg_site[b] = tp;
                     dg_site_calls[b] = tc;
                 }
+        for (a = 0; a < DG_PEAKS; a++)
+            printf("  ARRAYPEAK %-11s %7ld  (%s)\n",
+                   dg_peak_name[a], dg_peak[a], dg_peak_limit[a]);
         for (a = 0; a < dg_nsites && a < 18; a++)
             printf("  SITE %p %10ld in %6ld call(s)\n",
                    dg_site[a], dg_site_bytes[a], dg_site_calls[a]);

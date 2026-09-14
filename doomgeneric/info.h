@@ -1153,7 +1153,19 @@ typedef struct
     int misc2;
 } state_t;
 
-extern state_t	states[NUMSTATES];
+/* DOOM_TABLES_CONST moves these two tables -- 39,680 bytes together -- from
+ * RAM into flash on a target that has far more of the second than the first.
+ * The ONLY code that writes them is G_SetFastParms, which implements -fast and
+ * Nightmare's faster projectiles, so that option goes with them. The compiler
+ * enforces this: the tables were made const and it found all eight writes,
+ * which a grep for assignments had missed. */
+#ifdef DOOM_TABLES_CONST
+#define DOOM_TABLE const
+#else
+#define DOOM_TABLE
+#endif
+
+extern DOOM_TABLE state_t	states[NUMSTATES];
 extern char *sprnames[];
 
 typedef enum {
@@ -1326,6 +1338,6 @@ typedef struct
 
 } mobjinfo_t;
 
-extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
+extern DOOM_TABLE mobjinfo_t mobjinfo[NUMMOBJTYPES];
 
 #endif

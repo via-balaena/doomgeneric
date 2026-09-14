@@ -22,7 +22,10 @@
 
 
 
+// Measured maximum across all 36 maps with the view sweeping: 54.
+#ifndef MAXVISSPRITES
 #define MAXVISSPRITES  	128
+#endif
 
 extern vissprite_t	vissprites[MAXVISSPRITES];
 extern vissprite_t*	vissprite_p;

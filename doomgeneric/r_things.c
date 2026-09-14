@@ -786,6 +786,8 @@ void R_SortVisSprites (void)
     fixed_t		bestscale;
 
     count = vissprite_p - vissprites;
+
+    DG_NotePeak(3, count);
 	
     unsorted.next = unsorted.prev = &unsorted;
 

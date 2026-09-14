@@ -42,7 +42,11 @@
 
 // Networking and tick handling related.
 
+// Tics the local queue keeps to absorb network latency. A single-player
+// build has none to absorb.
+#ifndef BACKUPTICS
 #define BACKUPTICS 128
+#endif
 
 typedef struct _net_module_s net_module_t;
 typedef struct _net_packet_s net_packet_t;

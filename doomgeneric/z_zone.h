@@ -70,4 +70,6 @@ unsigned int Z_ZoneSize(void);
     Z_ChangeTag2((p), (t), __FILE__, __LINE__)
 
 
+void DG_NotePeak(int which, long value);
+
 #endif

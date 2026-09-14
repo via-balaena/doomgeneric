@@ -1808,6 +1808,12 @@ G_InitNew
     else
 	respawnmonsters = false;
 
+#ifndef DOOM_TABLES_CONST
+    /* The ONLY writes to states[] or mobjinfo[] anywhere in Doom: -fast and
+       Nightmare's quicker demons and projectiles. Under DOOM_TABLES_CONST
+       those two tables live in flash -- see DOOM_TABLE in info.h -- and this
+       is what pays for it. The compiler found these eight lines; a grep for
+       assignments to the tables had not. */
     if (fastparm || (skill == sk_nightmare && gameskill != sk_nightmare) )
     {
 	for (i=S_SARG_RUN1 ; i<=S_SARG_PAIN2 ; i++)
@@ -1824,6 +1830,7 @@ G_InitNew
 	mobjinfo[MT_HEADSHOT].speed = 10*FRACUNIT;
 	mobjinfo[MT_TROOPSHOT].speed = 10*FRACUNIT;
     }
+#endif
 
     // force players to be initialized upon first level load
     for (i=0 ; i<MAXPLAYERS ; i++)
