@@ -63,6 +63,77 @@ typedef struct
 
 memzone_t*	mainzone;
 
+/* Instrumentation: how much is held in NON-purgeable blocks, which is the
+   floor a smaller zone cannot go below. PU_CACHE and above are evictable and
+   shrink with the zone, so they are counted separately. */
+static long dg_nonpurge = 0;
+static long dg_nonpurge_peak = 0;
+static long dg_cache = 0;
+static long dg_cache_peak = 0;
+static long dg_tag[PU_NUM_TAGS];
+static long dg_tag_peak[PU_NUM_TAGS];
+
+/* Attribution: which caller asked for the non-purgeable bytes. */
+#define DG_SITES 256
+static void* dg_site[DG_SITES];
+static long  dg_site_bytes[DG_SITES];
+static int   dg_nsites = 0;
+
+static void dg_note_site(void* pc, long bytes)
+{
+    int i;
+    for (i = 0; i < dg_nsites; i++)
+        if (dg_site[i] == pc) { dg_site_bytes[i] += bytes; return; }
+    if (dg_nsites < DG_SITES) {
+        dg_site[dg_nsites] = pc;
+        dg_site_bytes[dg_nsites] = bytes;
+        dg_nsites++;
+    }
+}
+
+static void dg_account(int tag, long delta)
+{
+    if (tag >= 0 && tag < PU_NUM_TAGS) {
+        dg_tag[tag] += delta;
+        if (dg_tag[tag] > dg_tag_peak[tag]) dg_tag_peak[tag] = dg_tag[tag];
+    }
+    if (tag >= PU_PURGELEVEL) {
+        dg_cache += delta;
+        if (dg_cache > dg_cache_peak) dg_cache_peak = dg_cache;
+    } else {
+        dg_nonpurge += delta;
+        if (dg_nonpurge > dg_nonpurge_peak) dg_nonpurge_peak = dg_nonpurge;
+    }
+}
+
+void Z_PrintPeak(void)
+{
+    static const char* names[PU_NUM_TAGS] = {
+        "0", "STATIC", "SOUND", "MUSIC", "FREE", "LEVEL", "LEVSPEC",
+        "7", "PURGELEVEL", "CACHE"
+    };
+    int i;
+    printf("REFADDR Z_Malloc=%p\n", (void*)Z_Malloc);
+    printf("ZONEPEAK nonpurge_peak=%ld cache_peak=%ld nonpurge_now=%ld\n",
+           dg_nonpurge_peak, dg_cache_peak, dg_nonpurge);
+    for (i = 0; i < PU_NUM_TAGS; i++)
+        if (dg_tag_peak[i] > 0)
+            printf("  TAG %-10s peak %8ld  now %8ld\n",
+                   names[i] ? names[i] : "?", dg_tag_peak[i], dg_tag[i]);
+    {
+        int a, b;
+        for (a = 0; a < dg_nsites; a++)
+            for (b = a + 1; b < dg_nsites; b++)
+                if (dg_site_bytes[b] > dg_site_bytes[a]) {
+                    long tb = dg_site_bytes[a]; void* tp = dg_site[a];
+                    dg_site_bytes[a] = dg_site_bytes[b]; dg_site[a] = dg_site[b];
+                    dg_site_bytes[b] = tb; dg_site[b] = tp;
+                }
+        for (a = 0; a < dg_nsites && a < 18; a++)
+            printf("  SITE %p %10ld\n", dg_site[a], dg_site_bytes[a]);
+    }
+}
+
 
 
 //
@@ -140,6 +211,7 @@ void Z_Free (void* ptr)
     }
 
     // mark as free
+    dg_account(block->tag, -(long)block->size);
     block->tag = PU_FREE;
     block->user = NULL;
     block->id = 0;
@@ -271,6 +343,9 @@ Z_Malloc
 	if (user == NULL && tag >= PU_PURGELEVEL)
 	    I_Error ("Z_Malloc: an owner is required for purgable blocks");
 
+    dg_account(tag, (long)base->size);
+    if (tag < PU_PURGELEVEL)
+        dg_note_site(__builtin_return_address(0), (long)base->size);
     base->user = user;
     base->tag = tag;
 
@@ -440,6 +515,8 @@ void Z_ChangeTag2(void *ptr, int tag, char *file, int line)
         I_Error("%s:%i: Z_ChangeTag: an owner is required "
                 "for purgable blocks", file, line);
 
+    dg_account(block->tag, -(long)block->size);
+    dg_account(tag, (long)block->size);
     block->tag = tag;
 }
 

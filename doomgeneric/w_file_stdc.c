@@ -21,6 +21,7 @@
 #include "m_misc.h"
 #include "w_file.h"
 #include "z_zone.h"
+#include <sys/mman.h>
 
 typedef struct
 {
@@ -46,8 +47,17 @@ static wad_file_t *W_StdC_OpenFile(char *path)
 
     result = Z_Malloc(sizeof(stdc_wad_file_t), PU_STATIC, 0);
     result->wad.file_class = &stdc_wad_file;
-    result->wad.mapped = NULL;
     result->wad.length = M_FileLength(fstream);
+    // Stand-in for XIP flash: on the RP2350 a WAD in flash is already
+    // addressable, so `mapped` is simply its address and every lump is used
+    // in place. Mapping the file here measures that arrangement.
+    {
+        void *m = mmap(NULL, result->wad.length, PROT_READ, MAP_PRIVATE,
+                       fileno(fstream), 0);
+        result->wad.mapped = (m == MAP_FAILED) ? NULL : (byte *)m;
+        printf("WADMAP %s mapped=%p length=%u\n", path,
+               (void *)result->wad.mapped, (unsigned)result->wad.length);
+    }
     result->fstream = fstream;
 
     return &result->wad;
