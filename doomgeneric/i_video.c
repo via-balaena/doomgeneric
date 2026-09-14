@@ -287,7 +287,27 @@ void I_InitGraphics (void)
 
 
     /* Allocate screen to draw to */
-	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);  // For DOOM to draw on
+	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);
+
+    /* The platform's frame buffer. When it would be the same size, shape and
+       depth as I_VideoBuffer, point it at I_VideoBuffer rather than allocate
+       a second one: the copy in I_FinishUpdate is then skipped too. On a
+       device with 392 KiB for the whole process, 64000 bytes and a memcpy per
+       frame is not a rounding error. */
+#ifdef CMAP256
+    if (DG_ScreenBuffer == NULL && fb_scaling == 1
+        && s_Fb.xres == SCREENWIDTH && s_Fb.yres == SCREENHEIGHT)
+    {
+        DG_ScreenBuffer = (pixel_t *)I_VideoBuffer;
+    }
+#endif
+    if (DG_ScreenBuffer == NULL)
+    {
+        DG_ScreenBuffer = malloc(DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(pixel_t));
+        if (DG_ScreenBuffer == NULL)
+            I_Error("Failed to allocate the %dx%d frame buffer",
+                    DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+    }  // For DOOM to draw on
 
 	screenvisible = true;
 
@@ -332,6 +352,14 @@ void I_FinishUpdate (void)
     x_offset     = (((s_Fb.xres - (SCREENWIDTH  * fb_scaling)) * s_Fb.bits_per_pixel/8)) / 2; // XXX: siglent FB hack: /4 instead of /2, since it seems to handle the resolution in a funny way
     //x_offset     = 0;
     x_offset_end = ((s_Fb.xres - (SCREENWIDTH  * fb_scaling)) * s_Fb.bits_per_pixel/8) - x_offset;
+
+    /* Aliased onto I_VideoBuffer by I_InitGraphics: the frame is already
+       where the platform will read it. */
+    if ((void *)DG_ScreenBuffer == (void *)I_VideoBuffer)
+    {
+        DG_DrawFrame();
+        return;
+    }
 
     /* DRAW SCREEN */
     line_in  = (unsigned char *) I_VideoBuffer;

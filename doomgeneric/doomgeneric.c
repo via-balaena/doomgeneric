@@ -18,7 +18,11 @@ void doomgeneric_Create(int argc, char **argv)
 
 	M_FindResponseFile();
 
-	DG_ScreenBuffer = malloc(DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+	/* DG_ScreenBuffer is allocated by I_InitGraphics, not here, because only
+	   it knows whether the buffer is needed at all: when the framebuffer is
+	   exactly Doom's screen at the same depth, this buffer would never hold
+	   anything but a copy of I_VideoBuffer, and it aliases the two instead.
+	   A platform may also set DG_ScreenBuffer in DG_Init to supply its own. */
 
 	DG_Init();
 

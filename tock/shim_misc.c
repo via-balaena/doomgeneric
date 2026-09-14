@@ -83,12 +83,15 @@ int system(const char *cmd) { (void)cmd; return -1; }
 
 int mkdir(const char *path, int mode) { (void)path; (void)mode; errno = EACCES; return -1; }
 
-/* w_file_stdc.c mmaps the WAD so W_CacheLumpNum takes its zero-copy path. On
- * this target the WAD is already addressable in flash, so the Tock backend
- * sets wad_file->mapped directly and never calls this. Refusing loudly beats
- * returning a pointer that is not the WAD. */
+/* w_file_stdc.c mmaps the WAD so W_CacheLumpNum takes its zero-copy path.
+ * The WAD is in this app's flash, which is XIP-mapped, so it is already in
+ * the address space and mapping it means returning where it is. Any other
+ * file, or a partial map, is refused: a pointer that is not the whole WAD
+ * would be worse than no mapping at all, because Doom would use it. */
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, long off) {
-    (void)addr; (void)len; (void)prot; (void)flags; (void)fd; (void)off;
+    (void)addr; (void)prot; (void)flags;
+    if (fd == 3 && off == 0 && tock_wad_base && len == tock_wad_length)
+        return (void *)tock_wad_base;
     return MAP_FAILED;
 }
 

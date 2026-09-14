@@ -142,6 +142,33 @@ byte *I_ZoneBase (int *size)
     // Specify the heap size, in MiB (default 16).
     //
 
+    //!
+    // @arg <kb>
+    //
+    // Specify the heap size, in KiB.
+    //
+    // -mb is in whole MiB, which cannot express a heap for a device whose
+    // entire process has a few hundred KiB. Takes precedence over -mb, and
+    // does not fall back to a smaller size: on such a device the caller knows
+    // exactly what is available and a silent reduction would hide a failure.
+    //
+
+    p = M_CheckParmWithArgs("-kb", 1);
+
+    if (p > 0)
+    {
+        *size = atoi(myargv[p+1]) * 1024;
+        zonemem = malloc(*size);
+
+        if (zonemem == NULL)
+        {
+            I_Error("Unable to allocate %i KiB of RAM for zone", *size / 1024);
+        }
+
+        printf("zone memory: %p, %x allocated for zone\n", zonemem, *size);
+        return zonemem;
+    }
+
     p = M_CheckParmWithArgs("-mb", 1);
 
     if (p > 0)

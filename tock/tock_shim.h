@@ -24,3 +24,11 @@ void tock_exit(int status) __attribute__((noreturn));
  * budget lives in one place. Doom's zone takes nearly all of it in one call. */
 extern uint8_t *tock_heap_base;
 extern size_t   tock_heap_size;
+
+/* The WAD, which lives in the app's own flash and is therefore already in the
+ * address space. `tock_wad_name` is the name fopen() answers to -- whatever
+ * the app passes after -iwad -- so that Doom's IWAD search finds it and
+ * nothing else does. */
+extern const unsigned char *tock_wad_base;
+extern size_t               tock_wad_length;
+extern const char          *tock_wad_name;
