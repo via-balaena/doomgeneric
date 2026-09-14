@@ -54,9 +54,6 @@
     <ClCompile Include="f_finale.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="f_wipe.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="g_game.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -339,9 +336,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="f_finale.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="f_wipe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="g_game.h">

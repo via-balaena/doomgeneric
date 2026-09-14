@@ -254,7 +254,7 @@ extern  boolean         precache;
 
 
 // wipegamestate can be set to -1
-//  to force a wipe on the next draw
+//  to force a full redraw on the next draw
 extern  gamestate_t     wipegamestate;
 
 extern  int             mouseSensitivity;
