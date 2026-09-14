@@ -26,3 +26,11 @@ while read -r b; do
   fi
 done < <(sed -n 's/^SRC_DOOM = //p' "$SRC/Makefile" | tr ' ' '\n' | sed 's/\.o$//' | sed 's/^doomgeneric_xlib$/doomgeneric_null/')
 echo "--- compiled $ok, failed $bad ---"
+
+# The shim, built with the same flags. -fno-builtin matters most here: without
+# it clang recognises the body of memcpy and rewrites it into a call to itself.
+for f in "$(dirname "$0")"/../tock/shim_*.c; do
+  b=$(basename "$f" .c)
+  clang $FLAGS -c "$f" -o "$OBJ/$b.o" 2> "$OBJ/$b.err" || { echo "FAILED $b"; cat "$OBJ/$b.err"; exit 1; }
+done
+echo "--- shim built ---"

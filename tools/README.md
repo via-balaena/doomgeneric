@@ -39,3 +39,15 @@ header, which errs high.
 
 The real number arrives when this runs on silicon. Until then the projection
 has a stated method and a control, which is the most that can be said.
+
+## The shim
+
+`tock/` is not measurement. It is the libc surface Doom needs, sized by
+measuring what Doom references rather than by adopting a whole libc:
+`tock/include` declares it, `tock/shim_*.c` implements it, and
+`tools/build_arm.sh` builds both for a Cortex-M33 with clang.
+
+`tools/test_shim.sh` runs the host tests. The formatter is checked
+**differentially against this host's libc** -- the one reference
+implementation that costs nothing -- and the allocator and sscanf, which have
+no reference, state the property each case checks.
