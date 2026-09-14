@@ -135,8 +135,26 @@ void P_InitSwitchList(void)
 	    
 	    value = R_TextureNumForName(alphSwitchList[i].name1);
 #endif
-	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name1));
-	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name2));
+	    /* Skip a pair the WAD does not define, rather than die.
+	     *
+	     * R_TextureNumForName I_Errors, so a WAD trimmed to one map had to
+	     * carry every switch texture for the episode whether or not that
+	     * map has a single switch in it -- 38 textures for episode 1, and
+	     * the texture tables cost ~617 bytes each. A switch whose textures
+	     * are absent cannot appear on any wall, so there is nothing to
+	     * animate and nothing to lose.
+	     *
+	     * This is the check the original source already carried, a few
+	     * lines up, commented out as "UNUSED - debug?".
+	     */
+	    int sw_on  = R_CheckTextureNumForName(DEH_String(alphSwitchList[i].name1));
+	    int sw_off = R_CheckTextureNumForName(DEH_String(alphSwitchList[i].name2));
+
+	    if (sw_on < 0 || sw_off < 0)
+		continue;
+
+	    switchlist[index++] = sw_on;
+	    switchlist[index++] = sw_off;
 	}
     }
 }
