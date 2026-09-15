@@ -86,7 +86,9 @@ int main(int argc, char** argv) {
         if (e) exit_at = atoi(e);
     }
     for (ticks = 0; ticks < tick_limit; ticks++) {
-        if (exit_at && ticks == exit_at) {
+        /* DG_EXIT is a PERIOD, not a one-shot: exiting repeatedly is how a
+         * leak across level reloads shows itself. */
+        if (exit_at && ticks && ticks % exit_at == 0) {
             printf("--- G_ExitLevel at tic %d ---\n", ticks);
             fflush(stdout);
             G_ExitLevel();

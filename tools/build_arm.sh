@@ -21,7 +21,16 @@ SRC=$(cd "$(dirname "$0")/../doomgeneric" && pwd)
 INC=$(cd "$(dirname "$0")/../tock/include" && pwd)
 OBJ=${1:?usage: build_arm.sh <objdir>}
 mkdir -p "$OBJ"
-# The four limits on the second line are cut from measurement, not taste: the
+# MAXVISPLANES is 64, and that is the one limit here that is NOT a free win.
+# Across all 36 Freedoom maps the peak was 93, so 64 is not enough for a
+# general Doom -- but this build carries a ONE-MAP WAD, and that map (E2M8)
+# peaks at 2, which makes 64 a 32x margin for what it actually renders. The
+# 21,248 bytes it returns are what let the zone hold a level reload, which
+# otherwise failed a 16,408 byte allocation with 3,908 free. Overflowing it is
+# a loud I_Error in R_DrawPlanes, never corruption, and a build whose WAD has
+# busier maps should raise it and find the RAM elsewhere.
+#
+# The four limits on the next line are cut from measurement, not taste: the
 # renderer's fixed arrays were watched across all 36 Freedoom maps with the
 # view sweeping, and the high-water marks were openings 2879 of 20480,
 # vissprites 54 of 128, visplanes 93 of 128 and drawsegs 172 of 256. So the
@@ -38,6 +47,7 @@ FLAGS="--target=thumbv8m.main-none-eabi -mcpu=cortex-m33 -Os -ffreestanding -mfl
        -fno-stack-protector -fno-builtin -DNORMALUNIX -DLINUX -D_DEFAULT_SOURCE \
        -DCMAP256 -DDOOMGENERIC_RESX=320 -DDOOMGENERIC_RESY=200 \
        -DMAXOPENINGS=6144 -DBACKUPTICS=16 -DMAXVISSPRITES=96 -DMAX_CAPTURES=1 \
+       -DMAXVISPLANES=64 \
        -DDOOM_TABLES_CONST \
        ${DOOM_SCAFFOLD:-} \
        -Wno-everything -I$INC -I$SRC"

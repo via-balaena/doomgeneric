@@ -17,6 +17,8 @@
 //
 
 
+#include <limits.h>
+
 #include "z_zone.h"
 #include "i_system.h"
 #include "doomtype.h"
@@ -95,6 +97,42 @@ static const char *dg_peak_name[DG_PEAKS] = {
 static const char *dg_peak_limit[DG_PEAKS] = {
     "MAXVISPLANES", "MAXOPENINGS", "MAXDRAWSEGS", "MAXVISSPRITES"
 };
+
+/* What the zone actually holds, for a platform that cannot run Z_PrintPeak.
+ *
+ * `largest` is the biggest run Z_Malloc could satisfy: consecutive blocks that
+ * are free or purgeable, which is exactly what its rover will merge. Total
+ * free and largest free are DIFFERENT NUMBERS, and the difference is
+ * fragmentation -- a zone with room to spare can still fail an allocation, and
+ * saying only how much is left cannot tell the two apart.
+ */
+void DG_ZoneStats(long *peak, long *now, long *total_free, long *largest)
+{
+    memblock_t *b;
+    long run = 0;
+
+    if (peak)  *peak = dg_nonpurge_peak;
+    if (now)   *now  = dg_nonpurge;
+    if (total_free) *total_free = 0;
+    if (largest)    *largest = 0;
+
+    if (mainzone == NULL)
+        return;
+
+    for (b = mainzone->blocklist.next; b != &mainzone->blocklist; b = b->next)
+    {
+        if (b->tag == PU_FREE || b->tag >= PU_PURGELEVEL)
+        {
+            run += b->size;
+            if (total_free) *total_free += b->size;
+            if (largest && run > *largest) *largest = run;
+        }
+        else
+        {
+            run = 0;
+        }
+    }
+}
 
 void DG_NotePeak(int which, long value)
 {
@@ -298,6 +336,7 @@ Z_Malloc
     memblock_t* newblock;
     memblock_t*	base;
     void *result;
+    boolean	retried;
 
     size = (size + MEM_ALIGN - 1) & ~(MEM_ALIGN - 1);
     
@@ -311,6 +350,9 @@ Z_Malloc
     
     // if there is a free block behind the rover,
     //  back up over them
+    retried = false;
+
+retry:
     base = mainzone->rover;
     
     if (base->prev->tag == PU_FREE)
@@ -323,8 +365,35 @@ Z_Malloc
     {
         if (rover == start)
         {
-            // scanned all the way around the list
-            I_Error ("Z_Malloc: failed on allocation of %i bytes", size);
+            // Scanned all the way around the list.
+            //
+            // That is NOT the same as being out of memory. This search is a
+            // single-pass first fit that purges cached blocks as it walks, so
+            // space it consolidates BEHIND the point `base` has already
+            // reached is never revisited -- and the pass gives up with a run
+            // larger than the request sitting in the zone. Measured on a Pico
+            // 2 W reloading a level: it failed a 16,408 byte allocation with a
+            // 32,272 byte contiguous run free.
+            //
+            // A zone big enough to make first fit succeed by luck hides this;
+            // a tight one does not. So before declaring failure, drop every
+            // purgeable block and scan once more. One retry, so a genuine
+            // exhaustion still errors instead of looping.
+            if (!retried)
+            {
+                retried = true;
+                Z_FreeTags (PU_PURGELEVEL, INT_MAX);
+                goto retry;
+            }
+
+            {
+                long zp, zn, zf, zl;
+                DG_ZoneStats (&zp, &zn, &zf, &zl);
+                // Say what the zone looked like, not just what was asked for.
+                I_Error ("Z_Malloc: failed on allocation of %i bytes "
+                         "(tag %i, zone %i, in use %ld, free %ld, largest run %ld)",
+                         size, tag, mainzone->size, zn, zf, zl);
+            }
         }
 	
         if (rover->tag != PU_FREE)
