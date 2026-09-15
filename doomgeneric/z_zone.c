@@ -134,6 +134,78 @@ void DG_ZoneStats(long *peak, long *now, long *total_free, long *largest)
     }
 }
 
+// Print the zone's block map, because "largest run 30152" says the space is
+// stranded without saying what by.
+//
+// The failure path has already dropped every purgeable block (see the retry
+// in Z_Malloc), so anything left between two free runs CANNOT be purged and
+// is what actually splits the zone. This lists those blocks -- the free run
+// that ends at each one, then its tag and size -- followed by a per-tag
+// total, which is what separates "one allocation is in the way" from "a
+// whole class of them is".
+//
+// Bounded output: blocks under DUMP_FLOOR are summarised rather than listed,
+// so a zone full of small allocations cannot flood a 115200 baud console.
+void DG_ZoneDump(void)
+{
+    static const char *const tagname[PU_NUM_TAGS] = {
+        "?0", "STATIC", "SOUND", "MUSIC", "FREE", "LEVEL", "LEVSPEC",
+        "?7", "PURGE", "CACHE"
+    };
+    const long DUMP_FLOOR = 2048;
+    memblock_t *b;
+    long run = 0;
+    long tagtotal[PU_NUM_TAGS];
+    int  tagcount[PU_NUM_TAGS];
+    long small_total = 0;
+    int  small_count = 0;
+    int  listed = 0;
+    int  t;
+
+    if (mainzone == NULL)
+        return;
+
+    for (t = 0; t < PU_NUM_TAGS; t++) { tagtotal[t] = 0; tagcount[t] = 0; }
+
+    printf("zone map: blocks that cannot be purged, in address order\n");
+
+    for (b = mainzone->blocklist.next; b != &mainzone->blocklist; b = b->next)
+    {
+        if (b->tag == PU_FREE || b->tag >= PU_PURGELEVEL)
+        {
+            run += b->size;
+            continue;
+        }
+
+        t = (b->tag >= 0 && b->tag < PU_NUM_TAGS) ? b->tag : 0;
+        tagtotal[t] += b->size;
+        tagcount[t]++;
+
+        if (b->size >= DUMP_FLOOR && listed < 24)
+        {
+            printf("  free %7ld | %-7s %7d\n", run, tagname[t], b->size);
+            listed++;
+        }
+        else if (b->size < DUMP_FLOOR)
+        {
+            small_total += b->size;
+            small_count++;
+        }
+        run = 0;
+    }
+    printf("  free %7ld | (end)\n", run);
+
+    if (small_count)
+        printf("  plus %d unpurgeable blocks under %ld bytes, %ld total\n",
+               small_count, DUMP_FLOOR, small_total);
+
+    printf("zone by tag:");
+    for (t = 0; t < PU_NUM_TAGS; t++)
+        if (tagcount[t])
+            printf(" %s=%d/%ld", tagname[t], tagcount[t], tagtotal[t]);
+    printf("\n");
+}
+
 void DG_NotePeak(int which, long value)
 {
     if (which >= 0 && which < DG_PEAKS && value > dg_peak[which])
@@ -389,6 +461,9 @@ retry:
             {
                 long zp, zn, zf, zl;
                 DG_ZoneStats (&zp, &zn, &zf, &zl);
+                // The map first: I_Error does not return, so anything printed
+                // after it is lost.
+                DG_ZoneDump ();
                 // Say what the zone looked like, not just what was asked for.
                 I_Error ("Z_Malloc: failed on allocation of %i bytes "
                          "(tag %i, zone %i, in use %ld, free %ld, largest run %ld)",

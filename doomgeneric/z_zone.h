@@ -72,5 +72,6 @@ unsigned int Z_ZoneSize(void);
 
 void DG_NotePeak(int which, long value);
 void DG_ZoneStats(long *peak, long *now, long *total_free, long *largest);
+void DG_ZoneDump(void);
 
 #endif
