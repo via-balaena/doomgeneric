@@ -383,6 +383,9 @@ static int ZenityErrorBox(char *message)
 
 static boolean already_quitting = false;
 
+/// The last message I_Error was given, or empty if it has not been called.
+char dg_last_error[512];
+
 void I_Error (char *error, ...)
 {
     char msgbuf[512];
@@ -415,6 +418,12 @@ void I_Error (char *error, ...)
     memset(msgbuf, 0, sizeof(msgbuf));
     M_vsnprintf(msgbuf, sizeof(msgbuf), error, argptr);
     va_end(argptr);
+
+    // And keep it, for a platform that cannot show a message at the moment it
+    // happens. On a device whose only output is a serial console nobody may be
+    // reading, an error printed once and then sat on is indistinguishable from
+    // a freeze -- which cost an hour of looking for a hang that was not there.
+    M_StringCopy(dg_last_error, msgbuf, sizeof(dg_last_error));
 
     // Shutdown. Here might be other errors.
 

@@ -52,6 +52,10 @@ ticcmd_t* I_BaseTiccmd (void);
 // Clean exit, displays sell blurb.
 void I_Quit (void);
 
+/// The last message passed to I_Error, kept so a platform can show it
+/// later. Empty until I_Error is called.
+extern char dg_last_error[512];
+
 void I_Error (char *error, ...);
 
 void I_Tactile (int on, int off, int total);

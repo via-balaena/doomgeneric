@@ -71,12 +71,28 @@ int DG_GetKey(int* pressed, unsigned char* key) {
 }
 void DG_SetWindowTitle(const char* title) { (void)title; }
 
+/* Trigger a level exit at a given tic, to reproduce what pressing the exit
+ * switch does without needing the hardware or a hand on the lever. */
+extern void G_ExitLevel(void);
+static int exit_at = 0;
+
 int main(int argc, char** argv) {
     const char* lim = getenv("DG_TICKS");
     if (lim) tick_limit = atoi(lim);
     driving = getenv("DG_DRIVE") != NULL;
     doomgeneric_Create(argc, argv);
-    for (ticks = 0; ticks < tick_limit; ticks++) doomgeneric_Tick();
+    {
+        const char* e = getenv("DG_EXIT");
+        if (e) exit_at = atoi(e);
+    }
+    for (ticks = 0; ticks < tick_limit; ticks++) {
+        if (exit_at && ticks == exit_at) {
+            printf("--- G_ExitLevel at tic %d ---\n", ticks);
+            fflush(stdout);
+            G_ExitLevel();
+        }
+        doomgeneric_Tick();
+    }
     extern void Z_PrintPeak(void);
     Z_PrintPeak();
     printf("  RENDER frames=%ld nonzero_pixels_peak=%ld distinct_colours_peak=%d\n",

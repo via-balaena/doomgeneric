@@ -1477,6 +1477,32 @@ void G_DoCompleted (void)
 		, sizeof(wminfo.plyr[i].frags)); 
     } 
  
+    /* A WAD with one map has no intermission to show. The screen exists to
+       say which level was finished and which is next, and it wants a set of
+       graphics -- WIMAP0 alone is 68,168 bytes -- that such a WAD has no
+       reason to carry. Without them W_GetNumForName I_Errors on WILV00, which
+       on a device with nowhere to print that looks like the game freezing on
+       the switch that ends the level. It did exactly that on a Pico 2 W.
+
+       So when the next map is not in the WAD, go straight back into the one
+       that is. A full WAD never takes this path, because there the next map
+       exists. */
+    {
+	char	next[9];
+
+	if (gamemode == commercial)
+	    M_snprintf (next, sizeof(next), "map%02i", wminfo.next + 1);
+	else
+	    M_snprintf (next, sizeof(next), "E%iM%i", gameepisode, wminfo.next + 1);
+
+	if (W_CheckNumForName (next) < 0)
+	{
+	    printf ("G_DoCompleted: %s is not in this WAD, no intermission\n", next);
+	    gameaction = ga_worlddone;
+	    return;
+	}
+    }
+
     gamestate = GS_INTERMISSION; 
     viewactive = false; 
     automapactive = false; 
@@ -1517,8 +1543,36 @@ void G_WorldDone (void)
  
 void G_DoWorldDone (void) 
 {        
+    int	previous;
+
     gamestate = GS_LEVEL; 
+    previous = gamemap;
     gamemap = wminfo.next+1; 
+
+    /* A WAD trimmed to a single map has no next level. Doom would call
+       W_GetNumForName on it and I_Error, which on a device with nowhere to
+       print that looks exactly like the game freezing at the switch that ends
+       the level -- which is what it did on a Pico 2 W.
+       
+       Staying on the map that IS present is the honest thing for such a WAD,
+       and it costs a full one nothing, because there the next map exists and
+       this test passes. */
+    {
+	char	next[9];
+
+	if (gamemode == commercial)
+	    M_snprintf (next, sizeof(next), "map%02i", gamemap);
+	else
+	    M_snprintf (next, sizeof(next), "E%iM%i", gameepisode, gamemap);
+
+	if (W_CheckNumForName (next) < 0)
+	{
+	    printf ("G_DoWorldDone: %s is not in this WAD, staying on map %i\n",
+		    next, previous);
+	    gamemap = previous;
+	}
+    }
+
     G_DoLoadLevel (); 
     gameaction = ga_nothing; 
     viewactive = true; 
