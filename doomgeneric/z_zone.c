@@ -184,12 +184,18 @@ void DG_ZoneDump(void)
         tagtotal[t] += b->size;
         tagcount[t]++;
 
-        if (b->size >= DUMP_FLOOR && listed < 24)
+        // List a block if it is large, OR if the free run it ends is large.
+        // The second is the point: the run that matters is usually ended by a
+        // SMALL permanent block, and listing only big blocks showed every run
+        // as `free 0` and named none of the things actually splitting the
+        // zone.
+        if ((b->size >= DUMP_FLOOR || run >= DUMP_FLOOR) && listed < 24)
         {
-            printf("  free %7ld | %-7s %7d\n", run, tagname[t], b->size);
+            printf("  free %7ld | %-7s %7d%s\n", run, tagname[t], b->size,
+                   (b->size < DUMP_FLOOR) ? "  <- splitter" : "");
             listed++;
         }
-        else if (b->size < DUMP_FLOOR)
+        if (b->size < DUMP_FLOOR)
         {
             small_total += b->size;
             small_count++;
