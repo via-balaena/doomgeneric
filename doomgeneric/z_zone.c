@@ -159,6 +159,9 @@ void DG_ZoneDump(void)
     int  tagcount[PU_NUM_TAGS];
     long small_total = 0;
     int  small_count = 0;
+    long run_total = 0;
+    int  runs = 0;
+    int  big_runs = 0;
     int  listed = 0;
     int  t;
 
@@ -191,13 +194,26 @@ void DG_ZoneDump(void)
             small_total += b->size;
             small_count++;
         }
+        // Every free run ends here, listed or not. Counting them separately
+        // is what makes the free space this listing does not print visible:
+        // without it the map showed one 32,636 run and said nothing about
+        // where the other 24,880 free bytes were.
+        if (run > 0)
+        {
+            runs++;
+            if (run > DUMP_FLOOR) big_runs++;
+            run_total += run;
+        }
         run = 0;
     }
     printf("  free %7ld | (end)\n", run);
+    if (run > 0) { runs++; if (run > DUMP_FLOOR) big_runs++; run_total += run; }
 
     if (small_count)
         printf("  plus %d unpurgeable blocks under %ld bytes, %ld total\n",
                small_count, DUMP_FLOOR, small_total);
+    printf("  free space in %d runs, %d of them over %ld bytes, %ld total\n",
+           runs, big_runs, DUMP_FLOOR, run_total);
 
     printf("zone by tag:");
     for (t = 0; t < PU_NUM_TAGS; t++)
